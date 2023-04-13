@@ -1,13 +1,22 @@
 from django.db import models
 from django.utils.text import slugify
 import datetime
+from django.core.validators import URLValidator, validate_email
+
+
+def email_list(value):
+    emails = value.split(',')
+    for email in emails:
+        validate_email(email)
 
 
 class User(models.Model):
     name = models.CharField(max_length=200, unique=True, verbose_name='User Name')
     image = models.ImageField(null=True, upload_to="profile_img")
     slug = models.SlugField(max_length=200, null=True, blank=True, editable=False)
-    email = models.EmailField(max_length=200, null=True)
+    # email = models.EmailField(max_length=200, null=True)
+    email = models.CharField(max_length=500, null=True, validators=[email_list])
+    website = models.CharField(max_length=300, null=True, validators=[URLValidator(schemes=['http','https'])])
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.name)
@@ -21,7 +30,6 @@ class GoldUser(User):
         constraints = [
             models.CheckConstraint(check=models.Q(score__gte=5), name='score_gte_5'),
         ]
-
 
 
 class Task(models.Model):
@@ -43,7 +51,6 @@ class Task(models.Model):
         if self.title.lower() == "gym":
             self.category = 's'
         super().save(*args, **kwargs)
-
 
     def __str__(self):
         return self.title + " " + str(self.due_date)
