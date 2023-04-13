@@ -4,7 +4,7 @@ import datetime
 
 
 class User(models.Model):
-    name = models.CharField(max_length=200, unique=True)
+    name = models.CharField(max_length=200, unique=True, verbose_name='User Name')
     image = models.ImageField(null=True, upload_to="profile_img")
     slug = models.SlugField(max_length=200, null=True, blank=True, editable=False)
     email = models.EmailField(max_length=200, null=True)
@@ -14,16 +14,28 @@ class User(models.Model):
         super().save(*args, **kwargs)
 
 
+class GoldUser(User):
+    score = models.IntegerField()
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(check=models.Q(score__gte=5), name='score_gte_5'),
+        ]
+
+
+
 class Task(models.Model):
-    title = models.CharField(max_length=100, primary_key=True, help_text='Must be unique')
-    due_date = models.DateField(null=True)
-    hour = models.TimeField(default="12:00:00")
-    category = models.CharField(choices=[
+    categories = [
         ('p', 'Personal'),
         ('w', 'Work'),
         ('s', 'Sport'),
         ('h', 'Hobby')
-    ], max_length=1, null=True)
+    ]
+
+    title = models.CharField(max_length=100, primary_key=True, help_text='Must be unique')
+    due_date = models.DateField(null=True)
+    hour = models.TimeField(default="12:00:00")
+    category = models.CharField(choices=categories, max_length=1, null=True)
     done = models.BooleanField(null=True)
     user = models.ForeignKey(User, to_field="name", null=True, on_delete=models.CASCADE)
 
@@ -39,3 +51,21 @@ class Task(models.Model):
     def is_due_date_passed(self):
         now = datetime.date.today()
         return self.due_date < now
+
+    class Meta:
+        db_table = 'deeds'
+        ordering = ['title']
+
+    @property
+    def full_title(self):
+        return f"{self.category} {self.title}"
+
+
+class HWTask(Task):
+    class Meta:
+        proxy = True
+        verbose_name = 'Home Work'
+
+    def save(self, *args, **kwargs):
+        self.title = self.title + ",Home work"
+        super().save(*args, **kwargs)
