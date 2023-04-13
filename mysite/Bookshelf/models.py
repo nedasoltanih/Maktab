@@ -32,8 +32,8 @@ class Author(models.Model):
     def num_books(self):
         # books = Book.objects.filter(author=self.id)
         # return len(books)
-        authors = Author.objects.filter(pk=self.id).annotate(models.Count('book'))
-        return authors[0].book__count
+        authors = Author.objects.filter(pk=self.id).annotate(books = models.Count('book'))
+        return authors[0].books
 
 
 class IrAuthor(Author):

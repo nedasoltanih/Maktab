@@ -1,0 +1,16 @@
+{% extends "reminder/base.html" %}
+{% load extra_tag %}
+
+{% block content %}
+{% for t in tasks %}
+    <p><a href="http://127.0.0.1:8000/reminder/task-{{t.title}}/">
+        {{ t.title | cut:"a"}} {{ t.due_date |date:"d M" }}
+
+        {% if t.done %}
+        Done
+        {% endif %}
+    </a></p>
+{% endfor %}
+
+<p>Number of tasks {% num_tasks tasks %}</p>
+{% endblock %}

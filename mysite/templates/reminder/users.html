@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>List of users</title>
+</head>
+<body>
+{% for t in users %}
+    <p><a href='{% url "user_tasks" t.slug %}'>
+        {{ t.name }}
+    </a></p>
+{% endfor %}
+</body>
+</html>
