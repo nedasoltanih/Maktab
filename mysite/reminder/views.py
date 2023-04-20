@@ -1,20 +1,44 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, HttpResponseNotFound
+from django.views.generic import ListView, DetailView
+from django.views.generic.base import View, TemplateView, RedirectView
+from django.core.paginator import Paginator
+
 from .models import Task, User
 from django.db.models import Count
+
 
 def tasks_view(request, num):
     tasks = Task.objects.all()
     if num == 'all':
         # return HttpResponse(tasks)
-        return render(request, 'reminder/tasks.html', {'tasks': tasks})
+        paginator = Paginator(tasks, 2)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        return render(request, 'reminder/tasks.html', {'page_obj': page_obj})
     else:
         return HttpResponse(tasks[:num])
+
+
+class TaskList(ListView):
+    model = Task
+    template_name = "reminder/tasks.html"
+    context_object_name = "tasks"
+    paginate_by = 1
 
 
 def task_detail(request, id):
     task = Task.objects.get(pk=id)
     return render(request, 'reminder/task_detail.html', {'task': task})
+
+
+class TaskDetail(DetailView):
+    model = Task
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['user'] = User.objects.get(name=context['task'].user.name)
+        return context
 
 
 def one_user_tasks(request, slug):
@@ -26,6 +50,17 @@ def one_user_tasks(request, slug):
 def users_view(request):
     users = User.objects.all()
     return render(request, 'reminder/users.html', {'users': users})
+
+
+class UserList(ListView):
+    model = User
+    context_object_name = "users"
+    template_name = "reminder/users.html"
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        context = super().get_context_data()
+        context['num_users'] = len(context['users'])
+        return context
 
 
 def one_user(request, slug):
@@ -61,3 +96,31 @@ def new_task(request):
         task = Task(title=request.POST["title"], due_date=request.POST["due_date"])
         task.save()
         return HttpResponse("Saved!")
+
+
+class UsersNoTask(View):
+    def get(self, request, *args, **kwargs):
+        fusers = User.objects.annotate(tasks=Count('task')).filter(tasks=0)
+        return render(request, 'reminder/users.html', {'users': fusers})
+
+
+class BaseView(TemplateView):
+    template_name = "reminder/base.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['objects'] = Task.objects.all()[:5]
+        return context
+
+
+class RedirView(RedirectView):
+    pattern_name = "index"
+
+
+class UserTasks(ListView):
+    context_object_name = "tasks"
+    template_name = "reminder/tasks.html"
+
+    def get_queryset(self):
+        self.user = get_object_or_404(User, slug=self.kwargs['slug'])
+        return Task.objects.filter(user=self.user)

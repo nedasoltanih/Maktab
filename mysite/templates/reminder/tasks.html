@@ -2,8 +2,8 @@
 {% load extra_tag %}
 
 {% block content %}
-{% for t in tasks %}
-    <p><a href="http://127.0.0.1:8000/reminder/task-{{t.title}}/">
+{% for t in page_obj %}
+    <p><a href="http://127.0.0.1:8000/reminder/task-{{t.pk}}/">
         {{ t.title | cut:"a"}} {{ t.due_date |date:"d M" }}
 
         {% if t.done %}
@@ -11,6 +11,22 @@
         {% endif %}
     </a></p>
 {% endfor %}
+
+<div>
+        {% if page_obj.has_previous %}
+            <a href="?page=1">first</a>
+            <a href="?page={{ page_obj.previous_page_number }}">previous</a>
+        {% endif %}
+
+        <span>
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+        </span>
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}">next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}">last</a>
+        {% endif %}
+</div>
 
 <p>Number of tasks {% num_tasks tasks %}</p>
 {% endblock %}

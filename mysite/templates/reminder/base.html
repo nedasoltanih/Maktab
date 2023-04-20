@@ -14,5 +14,12 @@
         {% endblock %}
 </div>
 {% block content %}{% endblock %}
+<div>
+    {% for task in objects %}
+    <p>
+        {{ task.title }}
+    </p>
+    {% endfor %}
+</div>
 </body>
 </html>

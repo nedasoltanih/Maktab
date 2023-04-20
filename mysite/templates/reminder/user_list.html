@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>List of users</title>
+    <title>Title</title>
 </head>
 <body>
+<p>This is list of users:</p>
 {% for t in users %}
     <p><a href='{% url "user_tasks" t.slug %}'>
         {{ t.name }}
     </a></p>
 {% endfor %}
-<p>Number of users: {{ num_users }}</p>
 </body>
 </html>

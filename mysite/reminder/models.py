@@ -40,7 +40,7 @@ class Task(models.Model):
         ('h', 'Hobby')
     ]
 
-    title = models.CharField(max_length=100, primary_key=True, help_text='Must be unique')
+    title = models.CharField(max_length=100, help_text='Must be unique')
     due_date = models.DateField(null=True)
     hour = models.TimeField(default="12:00:00")
     category = models.CharField(choices=categories, max_length=1, null=True)
