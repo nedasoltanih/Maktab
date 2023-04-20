@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.text import slugify
 import datetime
 from django.core.validators import URLValidator, validate_email
+from .managers import UserManager, TaskManager
 
 
 def email_list(value):
@@ -21,6 +22,8 @@ class User(models.Model):
     def save(self, *args, **kwargs):
         self.slug = slugify(self.name)
         super().save(*args, **kwargs)
+
+    objects = UserManager()
 
 
 class GoldUser(User):
@@ -66,6 +69,8 @@ class Task(models.Model):
     @property
     def full_title(self):
         return f"{self.category} {self.title}"
+
+    objects = TaskManager()
 
 
 class HWTask(Task):

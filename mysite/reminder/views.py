@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse, HttpResponseNotFound
+from django.utils import timezone
 from django.views.generic import ListView, DetailView
 from django.views.generic.base import View, TemplateView, RedirectView
 from django.core.paginator import Paginator
@@ -38,12 +39,15 @@ class TaskDetail(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['user'] = User.objects.get(name=context['task'].user.name)
+        if context['task'].due_date > timezone.now().date():
+            context['days_left'] = context['task'].due_date - timezone.now().date()
         return context
 
 
 def one_user_tasks(request, slug):
-    name = User.objects.get(slug=slug)
-    tasks = Task.objects.filter(user=name)
+    # name = User.objects.get(slug=slug)
+    # tasks = Task.objects.filter(user=name)
+    tasks = Task.objects.get_user_tasks()
     return render(request, 'reminder/user_tasks.html', {'tasks': tasks})
 
 
@@ -57,10 +61,18 @@ class UserList(ListView):
     context_object_name = "users"
     template_name = "reminder/users.html"
 
-    def get_context_data(self, *, object_list=None, **kwargs):
-        context = super().get_context_data()
-        context['num_users'] = len(context['users'])
-        return context
+    def get_queryset(self):
+        users = User.objects.all()
+        for user in users:
+            user.undone_tasks = len(Task.objects.filter(user=user, done=False))
+        return users
+
+    # def get_context_data(self, *, object_list=None, **kwargs):
+    #     context = super().get_context_data()
+    #     context['num_users'] = len(context['users'])
+    #     for user in context['users']:
+    #         context[user.name] = len(Task.objects.filter(user=user).filter(done=False))
+    #     return context
 
 
 def one_user(request, slug):
@@ -100,7 +112,8 @@ def new_task(request):
 
 class UsersNoTask(View):
     def get(self, request, *args, **kwargs):
-        fusers = User.objects.annotate(tasks=Count('task')).filter(tasks=0)
+        # fusers = User.objects.annotate(tasks=Count('task')).filter(tasks=0)
+        fusers = User.objects.with_no_tasks()
         return render(request, 'reminder/users.html', {'users': fusers})
 
 
@@ -109,7 +122,7 @@ class BaseView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['objects'] = Task.objects.all()[:5]
+        context['objects'] = Task.objects.filter(due_date__gte=timezone.now().date()).order_by('due_date')[:3]
         return context
 
 
@@ -124,3 +137,7 @@ class UserTasks(ListView):
     def get_queryset(self):
         self.user = get_object_or_404(User, slug=self.kwargs['slug'])
         return Task.objects.filter(user=self.user)
+
+
+class UsersRedir(RedirectView):
+    pattern_name = 'users'

@@ -1,8 +1,8 @@
-from django.urls import path, include
+from django.urls import path, include, re_path
 from . import views
 
 extra_patterns = [
-    path('', views.UserList.as_view()),
+    path('', views.UserList.as_view(), name="users"),
     path('all/', views.users_view),
     path('tasks-<slug:slug>/', views.one_user_tasks, name="user_tasks"),
     path('notask/', views.UsersNoTask.as_view(), name="notask"),
@@ -20,4 +20,5 @@ urlpatterns =[
     path('task-<int:pk>/', views.TaskDetail.as_view(), name='task_detail'),
     path('recent_tasks/', views.tasks_view, {'num': 2}),
     path('users/', include(extra_patterns)),
+    re_path(r'user*', views.UsersRedir.as_view()),
 ]
