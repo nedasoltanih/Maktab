@@ -10,13 +10,13 @@ extra_patterns = [
     # path('<int:id>/', views.one_user)
 ]
 
-urlpatterns =[
+urlpatterns = [
     path("", views.BaseView.as_view(), name="index"),
     path("home/",views.RedirView.as_view()),
     path('tasks/', views.TaskList.as_view(), {'num': 'all'}),
     path('tasks/all/', views.tasks_view, {'num': 'all'}),
     path('tasks-<slug:slug>', views.UserTasks.as_view()),
-    path('new_task/', views.new_task),
+    path('new_task/', views.NewTask.as_view(), name="new_task"),
     path('task-<int:pk>/', views.TaskDetail.as_view(), name='task_detail'),
     path('recent_tasks/', views.tasks_view, {'num': 2}),
     path('users/', include(extra_patterns)),

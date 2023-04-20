@@ -103,9 +103,43 @@ def user_with_notasks(request):
 
 def new_task(request):
     if request.method == "GET":
-        return render(request, "reminder/new_task.html")
+        users = User.objects.all()
+        return render(request, "reminder/new_task.html", context={'users': users, 'categories': Task.categories})
     elif request.method == "POST":
-        task = Task(title=request.POST["title"], due_date=request.POST["due_date"])
+        user = User.objects.get(name=request.POST["user"])
+        done = True if "done" in request.POST.keys() else False
+        print(request.POST)
+        task = Task(title=request.POST["title"], due_date=request.POST["due_date"]
+                    , category=request.POST["category"], done=done, hour=request.POST["hour"], user=user)
+        task.save()
+        return HttpResponse("Saved!")
+
+
+class NewTask(View):
+    def get(self, request, *args, **kwargs):
+        users = User.objects.all()
+        if "id" in request.GET.keys():
+            task = Task.objects.get(pk=request.GET["id"])
+            return render(request, "reminder/new_task.html", context={'users': users,
+                                                                      'categories': Task.categories,
+                                                                      'task': task})
+        else:
+            return render(request, "reminder/new_task.html", context={'users': users, 'categories': Task.categories})
+
+    def post(self, request, *args, **kwargs):
+        user = User.objects.get(name=request.POST["user"])
+        done = True if "done" in request.POST.keys() else False
+        if request.GET["id"]:
+            task = Task.objects.get(pk=request.GET["id"])
+            task.title = request.POST["title"]
+            task.due_date = request.POST["due_date"]
+            task.category = request.POST["category"]
+            task.done = done
+            task.hour = request.POST["hour"]
+            task.user = user
+        else:
+            task = Task(title=request.POST["title"], due_date=request.POST["due_date"]
+                        , category=request.POST["category"], done=done, hour=request.POST["hour"], user=user)
         task.save()
         return HttpResponse("Saved!")
 

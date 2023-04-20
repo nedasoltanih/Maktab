@@ -1,4 +1,5 @@
 from django.db.models import Count, Manager
+from django.utils import timezone
 
 
 class UserManager(Manager):
@@ -10,3 +11,11 @@ class TaskManager(Manager):
     def get_user_tasks(self, slug):
         return self.filter(user__slug=slug)
 
+    def get_passed_tasks(self):
+        return self.filter(due_date__lte=timezone.now().date())
+
+    def get_done_tasks(self):
+        return self.filter(done=True)
+
+    def get_not_done_tasks(self):
+        return self.filter(done=False)

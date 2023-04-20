@@ -5,10 +5,26 @@
     <title>Title</title>
 </head>
 <body>
-<form action="/reminder/new_task/" method="post">
+<form action="{% url 'new_task' %}?id={{ task.pk }}" method="post">
     {% csrf_token %}
-    <p>Title: <input type="text" name="title"></p>
-    <p>Due date: <input type="text" name="due_date"></p>
+    <p>Title: <input type="text" name="title" value="{{ task.title }}"></p>
+    <p>Due date: <input type="date" name="due_date" value="{{ task.due_date|date  }}" ></p>
+    <p>Hour: <input type="time" name="hour" value="{{ task.hour }}"></p>
+    <p>Category:
+        <select name="category" id="category" value="{{ task.category }}">
+        {% for c in categories %}
+        <option value="{{c.0}}">{{c.1}}</option>
+        {% endfor %}
+        </select>
+    </p>
+    <p>Done:<input type="checkbox" id="done" name="done" {% if task.done %} checked {% endif %}></p>
+    <p>User:
+    <select name="user" id="user" >
+        {% for u in users %}
+        <option value="{{u.name}}" {% if task.user.name == u.name %} selected="selected" {% endif %}>{{u.name}}</option>
+        {% endfor %}
+    </select>
+    </p>
     <p><input type="submit" value="Save"></p>
 </form>
 </body>
