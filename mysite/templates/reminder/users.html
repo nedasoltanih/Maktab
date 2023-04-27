@@ -5,6 +5,10 @@
     <title>List of users</title>
 </head>
 <body>
+{% if last_login %}
+<p>You were logged in at {{last_login}}</p>
+{% endif %}
+
 {% for t in users %}
     <p><a href='{% url "user_tasks" t.slug %}'>
         {{ t.name }}

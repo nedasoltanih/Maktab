@@ -2,16 +2,38 @@
 {% load extra_tag %}
 
 {% block content %}
+{% if last_login %}
+<p>You were logged in at {{last_login}}</p>
+{% endif %}
+<form action="{% url 'all_tasks' %}" method="post">
+    {% csrf_token %}
+<p>
+    Color:
+    <select name="color" onchange="this.form.submit()">
+        <option value="black" {% if color == "black" %} selected="selected" {% endif %}>Black</option>
+        <option value="green" {% if color == "green" %} selected="selected" {% endif %}>Green</option>
+        <option value="red" {% if color == "red" %} selected="selected" {% endif %}>Red</option>
+        <option value="blue" {% if color == "blue" %} selected="selected" {% endif %}>Blue</option>
+    </select>
+</p>
 {% for t in page_obj %}
-    <p><a href="http://127.0.0.1:8000/reminder/task-{{t.pk}}/">
-        {{ t.title | cut:"a"}} {{ t.due_date |date:"d M" }}
+    <p style="color:{{color}};">
+        <input type="checkbox" id="{{ t.title }}" name="{{ t.pk }}"/>
+        {{ t.title }} {{ t.due_date |date:"d M" }}
 
         {% if t.done %}
         Done
         {% endif %}
-    </a></p>
+        <a href="http://127.0.0.1:8000/reminder/task-{{t.pk}}/">
+         see details
+        </a>
+    </p>
+
+
 {% endfor %}
 
+<p><input type="submit" value="Delete selected tasks"></p>
+</form>
 <div>
         {% if page_obj.has_previous %}
             <a href="?page=1">first</a>

@@ -15,6 +15,9 @@
 </p>
 
 <p><a href="{% url 'new_task'%}?id={{ task.pk }}">Edit</a></p>
-<p><a href="{% url 'new_task'%}?id={{ task.pk }}">Delete</a></p>
+<form action="{% url 'task_detail' task.pk %}" method="post">
+    {% csrf_token %}
+    <p><input type="submit" value="Delete"></p>
+</form>
 </body>
 </html>

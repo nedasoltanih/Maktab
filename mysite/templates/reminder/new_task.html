@@ -8,8 +8,8 @@
 <form action="{% url 'new_task' %}?id={{ task.pk }}" method="post">
     {% csrf_token %}
     <p>Title: <input type="text" name="title" value="{{ task.title }}"></p>
-    <p>Due date: <input type="date" name="due_date" value="{{ task.due_date|date  }}" ></p>
-    <p>Hour: <input type="time" name="hour" value="{{ task.hour }}"></p>
+    <p>Due date: <input type="date" name="due_date" value="{{ task.due_date|date:'Y-m-d' }}" ></p>
+    <p>Hour: <input type="time" name="hour" value="{{ task.hour|date:'H:i' }}"></p>
     <p>Category:
         <select name="category" id="category" value="{{ task.category }}">
         {% for c in categories %}

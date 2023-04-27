@@ -121,3 +121,31 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.1/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+#         'LOCATION': 'my_cache_table',
+#     }
+# }
+
+# SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+#         'LOCATION': '/Users/nedasoltani/Workspaces/Maktab/Maktab/mysite/temp',
+#     }
+# }
+
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+#         'LOCATION': 'unique-snowflake',
+#     }
+# }
+
+# SESSION_ENGINE = "django.contrib.sessions.backends.file"
+# SESSION_FILE_PATH = "/Users/nedasoltani/Workspaces/Maktab/Maktab/mysite/temp/file_sessions"
+
+# SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"

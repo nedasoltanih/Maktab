@@ -18,6 +18,7 @@ class User(models.Model):
     # email = models.EmailField(max_length=200, null=True)
     email = models.CharField(max_length=500, null=True, validators=[email_list])
     website = models.CharField(max_length=300, null=True, validators=[URLValidator(schemes=['http','https'])])
+    password = models.CharField(max_length=200, default='123456')
 
     def save(self, *args, **kwargs):
         self.slug = slugify(self.name)
