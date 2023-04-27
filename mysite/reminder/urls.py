@@ -12,7 +12,7 @@ extra_patterns = [
 
 urlpatterns = [
     path("", views.BaseView.as_view(), name="index"),
-    path("home/",views.RedirView.as_view()),
+    # path("home/",views.RedirView.as_view()),
     path("login/",views.LoginView.as_view(), name='login'),
     path('tasks/', views.TaskList.as_view(), name='tasks'),
     path('tasks/all/', views.tasks_view, {'num': 'all'}, name="all_tasks"),
@@ -21,5 +21,6 @@ urlpatterns = [
     path('task-<int:pk>/', views.TaskDetail.as_view(), name='task_detail'),
     path('recent_tasks/', views.tasks_view, {'num': 2}),
     path('users/', include(extra_patterns)),
+    path('register/', views.Register.as_view()),
     re_path(r'user*', views.UsersRedir.as_view()),
 ]

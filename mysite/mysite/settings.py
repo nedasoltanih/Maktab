@@ -149,3 +149,5 @@ STATIC_URL = '/static/'
 # SESSION_FILE_PATH = "/Users/nedasoltani/Workspaces/Maktab/Maktab/mysite/temp/file_sessions"
 
 # SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+
+AUTH_USER_MODEL = "reminder.profile"

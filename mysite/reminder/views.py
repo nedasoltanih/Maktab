@@ -1,56 +1,64 @@
 import datetime
 
+from django.contrib.auth import logout, login, authenticate
+from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.sessions.models import Session
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, HttpResponseNotFound
 from django.utils import timezone
 from django.views.generic import ListView, DetailView
 from django.views.generic.base import View, TemplateView, RedirectView
 from django.core.paginator import Paginator
+from django.contrib.auth.models import User as DjangoUser
 
-from .models import Task, User
+from .models import Task
 from django.db.models import Count
 
 
 def tasks_view(request, num):
-    if request.method == "POST":
-        if request.POST.get("color", ""):
-            request.session['color'] = request.POST["color"]
-            return redirect("all_tasks")
+    if request.user.is_authenticated:
+        if request.method == "POST":
+            if request.POST.get("color", ""):
+                request.session['color'] = request.POST["color"]
+                return redirect("all_tasks")
+            else:
+                for task in Task.objects.all():
+                    if str(task.pk) in request.POST.keys():
+                        Task.objects.get(pk=task.pk).delete()
+                return HttpResponse("Success! Deleted tasks.")
         else:
-            for task in Task.objects.all():
-                if str(task.pk) in request.POST.keys():
-                    Task.objects.get(pk=task.pk).delete()
-            return HttpResponse("Success! Deleted tasks.")
+            color = request.session.get('color', "black")
+            tasks = Task.objects.all()
+            if num == 'all':
+                # return HttpResponse(tasks)
+                paginator = Paginator(tasks, 2)
+                page_number = request.GET.get('page')
+                page_obj = paginator.get_page(page_number)
+                return render(request, 'reminder/tasks.html', {'page_obj': page_obj, 'color': color})
+            else:
+                return HttpResponse(tasks[:num])
     else:
-        color = request.session.get('color', "black")
-        tasks = Task.objects.all()
-        if num == 'all':
-            # return HttpResponse(tasks)
-            paginator = Paginator(tasks, 2)
-            page_number = request.GET.get('page')
-            page_obj = paginator.get_page(page_number)
-            return render(request, 'reminder/tasks.html', {'page_obj': page_obj, 'color': color})
-        else:
-            return HttpResponse(tasks[:num])
+        return redirect("login")
 
 
-class TaskList(ListView):
+class TaskList(LoginRequiredMixin, ListView):
     model = Task
     template_name = "reminder/tasks.html"
     context_object_name = "tasks"
     paginate_by = 4
+    login_url = "/reminder/login/"
 
     def get(self, request):
-        if request.session.get("username"):
-            last_login = request.COOKIES.get("last_login")
-            tasks = Task.objects.filter(user=request.session.get("username"))
-            paginator = Paginator(tasks, 10)
-            page_number = request.GET.get('page')
-            page_obj = paginator.get_page(page_number)
-            response = render(request, 'reminder/tasks.html', {'page_obj': page_obj, 'tasks': tasks, 'last_login':last_login})
-            response.set_cookie("last_login", datetime.datetime.now())
-            return response
-        return super().get(request)
+        last_login = request.COOKIES.get("last_login")
+        user = User.objects.get(django_user=request.user)
+        tasks = Task.objects.filter(user=user)
+        paginator = Paginator(tasks, 10)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        response = render(request, 'reminder/tasks.html', {'page_obj': page_obj, 'tasks': tasks, 'last_login':last_login})
+        response.set_cookie("last_login", datetime.datetime.now())
+        return response
 
     def post(self, request):
         if request.POST.get("color", ""):
@@ -63,6 +71,7 @@ class TaskList(ListView):
             return HttpResponse("Success! Deleted tasks.")
 
 
+@login_required(login_url='/reminder/login/')
 def task_detail(request, id):
     task = Task.objects.get(pk=id)
     return render(request, 'reminder/task_detail.html', {'task': task})
@@ -116,6 +125,7 @@ class UserList(ListView):
     #     return context
 
 
+@login_required(login_url="/reminder/login/")
 def one_user(request, slug):
     user = User.objects.filter(slug=slug)
     if not user:
@@ -142,6 +152,7 @@ def user_with_notasks(request):
     return render(request, 'reminder/users.html', {'users': fusers})
 
 
+@permission_required('reminder.add_task', login_url='/reminder/login/', raise_exception=True)
 def new_task(request):
     if request.method == "GET":
         users = User.objects.all()
@@ -156,7 +167,11 @@ def new_task(request):
         return HttpResponse("Saved!")
 
 
-class NewTask(View):
+class NewTask(PermissionRequiredMixin, View):
+    permission_required = 'reminder.add_task'
+    login_url = '/reminder/login/'
+    raise_exception = True
+
     def get(self, request, *args, **kwargs):
         users = User.objects.all()
         if "id" in request.GET.keys():
@@ -168,21 +183,24 @@ class NewTask(View):
             return render(request, "reminder/new_task.html", context={'users': users, 'categories': Task.categories})
 
     def post(self, request, *args, **kwargs):
-        user = User.objects.get(name=request.POST["user"])
-        done = True if "done" in request.POST.keys() else False
-        if request.GET["id"]:
-            task = Task.objects.get(pk=request.GET["id"])
-            task.title = request.POST["title"]
-            task.due_date = request.POST["due_date"]
-            task.category = request.POST["category"]
-            task.done = done
-            task.hour = request.POST["hour"]
-            task.user = user
-        else:
-            task = Task(title=request.POST["title"], due_date=request.POST["due_date"]
-                        , category=request.POST["category"], done=done, hour=request.POST["hour"], user=user)
-        task.save()
-        return HttpResponse("Saved!")
+        # if request.user.has_perm('reminder.add_task'):
+            user = User.objects.get(name=request.POST["user"])
+            done = True if "done" in request.POST.keys() else False
+            if request.GET["id"]:
+                task = Task.objects.get(pk=request.GET["id"])
+                task.title = request.POST["title"]
+                task.due_date = request.POST["due_date"]
+                task.category = request.POST["category"]
+                task.done = done
+                task.hour = request.POST["hour"]
+                task.user = user
+            else:
+                task = Task(title=request.POST["title"], due_date=request.POST["due_date"]
+                            , category=request.POST["category"], done=done, hour=request.POST["hour"], user=user)
+            task.save()
+            return HttpResponse("Saved!")
+        # else:
+        #     return HttpResponse("You dont have permission to do that!")
 
 
 class UsersNoTask(View):
@@ -201,11 +219,13 @@ class BaseView(TemplateView):
         return context
 
 
-class RedirView(RedirectView):
-    pattern_name = "index"
+# class RedirView(RedirectView):
+#     pattern_name = "index"
 
 
-class UserTasks(ListView):
+class UserTasks(LoginRequiredMixin, ListView):
+    login_url = '/reminder/login/'
+    redirect_field_name = 'next'
     context_object_name = "tasks"
     template_name = "reminder/tasks.html"
 
@@ -221,19 +241,35 @@ class UsersRedir(RedirectView):
 class LoginView(View):
 
     def get(self, request):
-        logged_in = True if request.session.get("username") else False
-        return render(request, "reminder/login.html", {"logged_in": logged_in})
+        return render(request, "reminder/login.html")
 
     def post(self, request):
+        next_url = request.GET.get("next", "tasks")
         if request.POST.get("logout"):
-            del request.session["username"]
+            logout(request)
             return redirect("login")
-        try:
-            user = User.objects.get(name=request.POST["name"])
-            if user.password == request.POST["password"]:
-                request.session["username"] = request.POST["name"]
-                return redirect("tasks")
+        user = authenticate(username=request.POST["username"], password=request.POST["password"])
+        if user:
+            if user.is_active:
+                login(request, user)
+                return redirect(next_url)
             else:
-                return HttpResponse("Wrong password!")
-        except:
-            return HttpResponse("User not found!")
+                return HttpResponse("User is not active!")
+        else:
+            return HttpResponse("Username or password is wrong!")
+
+
+class Register(View):
+    def get(self, request):
+        return render(request, "reminder/register.html")
+
+    def post(self, request):
+        dj_user = DjangoUser.objects.create_user(request.POST["username"],
+                                                 request.POST["email"],
+                                                 request.POST["password"],
+                                                 first_name=request.POST["name"],
+                                                 last_name=request.POST["lname"],)
+        dj_user.save()
+        user = User(name=request.POST["name"], website=request.POST["website"], django_user=dj_user)
+        user.save()
+        return HttpResponse("Success!")
