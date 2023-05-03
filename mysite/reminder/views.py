@@ -3,7 +3,6 @@ import datetime
 from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-from django.contrib.sessions.models import Session
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponse, HttpResponseNotFound
 from django.utils import timezone
@@ -12,7 +11,7 @@ from django.views.generic.base import View, TemplateView, RedirectView
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User as DjangoUser
 
-from .models import Task
+from .models import Task, Profile
 from django.db.models import Count
 
 
@@ -51,7 +50,7 @@ class TaskList(LoginRequiredMixin, ListView):
 
     def get(self, request):
         last_login = request.COOKIES.get("last_login")
-        user = User.objects.get(django_user=request.user)
+        user = Profile.objects.get(django_user=request.user)
         tasks = Task.objects.filter(user=user)
         paginator = Paginator(tasks, 10)
         page_number = request.GET.get('page')
@@ -82,7 +81,7 @@ class TaskDetail(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['user'] = User.objects.get(name=context['task'].user.name)
+        context['user'] = Profile.objects.get(name=context['task'].user.name)
         if context['task'].due_date > timezone.now().date():
             context['days_left'] = context['task'].due_date - timezone.now().date()
         return context
@@ -94,25 +93,25 @@ class TaskDetail(DetailView):
 
 
 def one_user_tasks(request, slug):
-    # name = User.objects.get(slug=slug)
+    # name = Profile.objects.get(slug=slug)
     # tasks = Task.objects.filter(user=name)
     tasks = Task.objects.get_user_tasks(slug)
     return render(request, 'reminder/user_tasks.html', {'tasks': tasks})
 
 
 def users_view(request):
-    users = User.objects.all()
+    users = Profile.objects.all()
     last_login = request.COOKIES.get("last_login")
     return render(request, 'reminder/users.html', {'users': users, 'last_login':last_login})
 
 
 class UserList(ListView):
-    model = User
+    model = Profile
     context_object_name = "users"
     template_name = "reminder/users.html"
 
     def get_queryset(self):
-        users = User.objects.all()
+        users = Profile.objects.all()
         for user in users:
             user.undone_tasks = len(Task.objects.filter(user=user, done=False))
         return users
@@ -127,24 +126,24 @@ class UserList(ListView):
 
 @login_required(login_url="/reminder/login/")
 def one_user(request, slug):
-    user = User.objects.filter(slug=slug)
+    user = Profile.objects.filter(slug=slug)
     if not user:
-        return HttpResponseNotFound('<h1>User not found</h1>')
+        return HttpResponseNotFound('<h1>Profile not found</h1>')
     return HttpResponse(user[0].name)
 
 
 def user_with_notasks(request):
-    # users = User.objects.all()
+    # users = Profile.objects.all()
     # fusers = []
     # for user in users:
     #     if not Task.objects.filter(user=user.name):
     #         fusers.append(user)
 
-    fusers = User.objects.annotate(tasks=Count('task')).filter(tasks=0)
+    fusers = Profile.objects.annotate(tasks=Count('task')).filter(tasks=0)
 
     # fusers = []
     # tasks = Task.objects.all().values('user')
-    # users = User.objects.all()
+    # users = Profile.objects.all()
     # for user in users:
     #     if user.name not in  tasks:
     #         fusers.append(user)
@@ -155,10 +154,10 @@ def user_with_notasks(request):
 @permission_required('reminder.add_task', login_url='/reminder/login/', raise_exception=True)
 def new_task(request):
     if request.method == "GET":
-        users = User.objects.all()
+        users = Profile.objects.all()
         return render(request, "reminder/new_task.html", context={'users': users, 'categories': Task.categories})
     elif request.method == "POST":
-        user = User.objects.get(name=request.POST["user"])
+        user = Profile.objects.get(name=request.POST["user"])
         done = True if "done" in request.POST.keys() else False
         print(request.POST)
         task = Task(title=request.POST["title"], due_date=request.POST["due_date"]
@@ -173,7 +172,7 @@ class NewTask(PermissionRequiredMixin, View):
     raise_exception = True
 
     def get(self, request, *args, **kwargs):
-        users = User.objects.all()
+        users = Profile.objects.all()
         if "id" in request.GET.keys():
             task = Task.objects.get(pk=request.GET["id"])
             return render(request, "reminder/new_task.html", context={'users': users,
@@ -184,7 +183,7 @@ class NewTask(PermissionRequiredMixin, View):
 
     def post(self, request, *args, **kwargs):
         # if request.user.has_perm('reminder.add_task'):
-            user = User.objects.get(name=request.POST["user"])
+            user = Profile.objects.get(name=request.POST["user"])
             done = True if "done" in request.POST.keys() else False
             if request.GET["id"]:
                 task = Task.objects.get(pk=request.GET["id"])
@@ -205,8 +204,8 @@ class NewTask(PermissionRequiredMixin, View):
 
 class UsersNoTask(View):
     def get(self, request, *args, **kwargs):
-        # fusers = User.objects.annotate(tasks=Count('task')).filter(tasks=0)
-        fusers = User.objects.with_no_tasks()
+        # fusers = Profile.objects.annotate(tasks=Count('task')).filter(tasks=0)
+        fusers = Profile.objects.with_no_tasks()
         return render(request, 'reminder/users.html', {'users': fusers})
 
 
@@ -230,7 +229,7 @@ class UserTasks(LoginRequiredMixin, ListView):
     template_name = "reminder/tasks.html"
 
     def get_queryset(self):
-        self.user = get_object_or_404(User, slug=self.kwargs['slug'])
+        self.user = get_object_or_404(Profile, slug=self.kwargs['slug'])
         return Task.objects.filter(user=self.user)
 
 
@@ -254,7 +253,7 @@ class LoginView(View):
                 login(request, user)
                 return redirect(next_url)
             else:
-                return HttpResponse("User is not active!")
+                return HttpResponse("Profile is not active!")
         else:
             return HttpResponse("Username or password is wrong!")
 
@@ -270,6 +269,6 @@ class Register(View):
                                                  first_name=request.POST["name"],
                                                  last_name=request.POST["lname"],)
         dj_user.save()
-        user = User(name=request.POST["name"], website=request.POST["website"], django_user=dj_user)
+        user = Profile(name=request.POST["name"], website=request.POST["website"], django_user=dj_user)
         user.save()
         return HttpResponse("Success!")

@@ -1,9 +1,8 @@
 from django.contrib import admin
 
-from .models import Task, GoldUser, HWTask
+from .models import Task, Profile, HWTask
 
 admin.site.register(Task)
-# admin.site.register(User)
-admin.site.register(GoldUser)
+admin.site.register(Profile)
 admin.site.register(HWTask)
 
