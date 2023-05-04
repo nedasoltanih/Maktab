@@ -6,10 +6,21 @@ from .managers import UserManager, TaskManager
 from django.contrib.auth.models import User as DjangoUser, PermissionsMixin
 
 
-def email_list(value):
-    emails = value.split(',')
-    for email in emails:
-        validate_email(email)
+# def email_list(value):
+#     emails = value.split(',')
+#     for email in emails:
+#         validate_email(email)
+
+class MultiEmailField(models.Field):
+    def to_python(self, value):
+        if not value:
+            return []
+        return value.split(',')
+
+    def validate(self, value, model_instance):
+        super().validate(value, model_instance)
+        for email in value:
+            validate_email(email)
 
 
 class Profile(AbstractBaseUser, PermissionsMixin):
@@ -19,7 +30,9 @@ class Profile(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField('last name', max_length=30, blank=True)
     date_joined = models.DateTimeField('date joined', auto_now_add=True)
     is_active = models.BooleanField('active', default=True)
-    is_staff = models.BooleanField('staff', default=True)
+    is_staff = models.BooleanField('staff', default=False)
+
+    # emails = MultiEmailField(null=True)
 
     image = models.ImageField(null=True, upload_to="profile_img")
     slug = models.SlugField(max_length=200, null=True, blank=True, editable=False)
@@ -46,6 +59,9 @@ class Profile(AbstractBaseUser, PermissionsMixin):
         Returns the short name for the user.
         '''
         return self.first_name
+
+    # def save(self):
+    #     self.email = self.emails[0]
 
 
 class Task(models.Model):

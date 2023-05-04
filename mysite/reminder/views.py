@@ -4,13 +4,14 @@ from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse, HttpResponseNotFound
+from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
 from django.utils import timezone
-from django.views.generic import ListView, DetailView
+from django.views.generic import ListView, DetailView, FormView
 from django.views.generic.base import View, TemplateView, RedirectView
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User as DjangoUser
 
+from .forms import TaskForm, TaskModelForm, UserForm
 from .models import Task, Profile
 from django.db.models import Count
 
@@ -272,3 +273,67 @@ class Register(View):
         user = Profile(name=request.POST["name"], website=request.POST["website"], django_user=dj_user)
         user.save()
         return HttpResponse("Success!")
+
+
+class NewTaskForm(View):
+    def get(self, request):
+        form = TaskForm()
+        return render(request, "reminder/new_task_2.html", {'form': form})
+
+    def post(self, request):
+        form = TaskForm(request.POST)
+        if form.is_valid():
+            task = Task(title=form.cleaned_data.get("title"), due_date=form.cleaned_data.get("due_date"),
+                        hour=form.cleaned_data.get("time"))
+            task.save()
+            return HttpResponse("Success!")
+        else:
+            return render(request, "reminder/new_task_2.html", {'form': form})
+
+
+class NewTaskModelForm(View):
+    def get(self, request):
+        form = TaskModelForm()
+        return render(request, "reminder/new_task_2.html", {'form': form})
+
+    def post(self, request):
+        form = TaskModelForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return HttpResponseRedirect("/reminder/success/")
+        else:
+            return render(request, "reminder/new_task_2.html", {'form': form})
+
+
+class TaskFormView(FormView):
+    form_class = TaskForm
+    template_name = "reminder/new_task_2.html"
+    success_url = "/reminder/success/"
+
+    def post(self, request):
+        form = TaskForm(request.POST)
+        if form.is_valid():
+            task = Task(title=form.cleaned_data.get("title"), due_date=form.cleaned_data.get("due_date"),
+                        hour=form.cleaned_data.get("time"))
+            task.save()
+            return HttpResponseRedirect("/reminder/success/")
+        else:
+            return render(request, "reminder/new_task_2.html", {'form': form})
+
+
+class SuccessView(TemplateView):
+    template_name = "reminder/success.html"
+
+
+class UserRegisterView(FormView):
+    form_class = UserForm
+    template_name = "reminder/signup.html"
+    success_url = "/reminder/success/"
+
+    def post(self, request, *args, **kwargs):
+        form = UserForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return HttpResponseRedirect("/reminder/success/")
+        else:
+            return render(request, "reminder/signup.html", {'form': form})

@@ -18,9 +18,13 @@ urlpatterns = [
     path('tasks/all/', views.tasks_view, {'num': 'all'}, name="all_tasks"),
     path('tasks-<slug:slug>', views.UserTasks.as_view()),
     path('new_task/', views.NewTask.as_view(), name="new_task"),
+    path('new_task_2/', views.TaskFormView.as_view(), name="new_task_2"),
+    path('new_task_3/', views.NewTaskModelForm.as_view(), name="new_task_3"),
     path('task-<int:pk>/', views.TaskDetail.as_view(), name='task_detail'),
     path('recent_tasks/', views.tasks_view, {'num': 2}),
     path('users/', include(extra_patterns)),
     path('register/', views.Register.as_view()),
+    path('success/', views.SuccessView.as_view(), name='success'),
+    path('signup/', views.UserRegisterView.as_view(), name='signup'),
     re_path(r'user*', views.UsersRedir.as_view()),
 ]
