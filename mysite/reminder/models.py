@@ -2,6 +2,8 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import models
 import datetime
 from django.core.validators import URLValidator, validate_email
+from django.utils.text import slugify
+
 from .managers import UserManager, TaskManager
 from django.contrib.auth.models import User as DjangoUser, PermissionsMixin
 
@@ -34,9 +36,9 @@ class Profile(AbstractBaseUser, PermissionsMixin):
 
     # emails = MultiEmailField(null=True)
 
-    image = models.ImageField(null=True, upload_to="profile_img")
+    image = models.ImageField(null=True, upload_to="profile_img", blank=True)
     slug = models.SlugField(max_length=200, null=True, blank=True, editable=False)
-    website = models.CharField(max_length=300, null=True, validators=[URLValidator(schemes=['http', 'https'])])
+    website = models.CharField(max_length=300, null=True, blank=True, validators=[URLValidator(schemes=['http', 'https'])])
 
     objects = UserManager()
 
@@ -78,10 +80,12 @@ class Task(models.Model):
     category = models.CharField(choices=categories, max_length=1, null=True)
     done = models.BooleanField(null=True)
     user = models.ForeignKey(Profile, null=True, on_delete=models.CASCADE)
+    slug = models.SlugField(null=True, editable=False)
 
     def save(self, *args, **kwargs):
         if self.title.lower() == "gym":
             self.category = 's'
+        self.slug = slugify(self.title)
         super().save(*args, **kwargs)
 
     def __str__(self):

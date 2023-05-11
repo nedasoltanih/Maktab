@@ -5,7 +5,7 @@
 {% if last_login %}
 <p>You were logged in at {{last_login}}</p>
 {% endif %}
-<form action="{% url 'all_tasks' %}" method="post">
+<form action="" method="post">
     {% csrf_token %}
 <p>
     Color:
@@ -32,7 +32,7 @@
 
 {% endfor %}
 
-<p><input type="submit" value="Delete selected tasks"></p>
+<p><input type="submit" name="delete" value="Delete selected tasks"></p>
 </form>
 <div>
         {% if page_obj.has_previous %}

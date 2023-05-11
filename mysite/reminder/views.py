@@ -3,17 +3,23 @@ import datetime
 from django.contrib.auth import logout, login, authenticate
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.core.mail import send_mail
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
+from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect, Http404
 from django.utils import timezone
 from django.views.generic import ListView, DetailView, FormView
 from django.views.generic.base import View, TemplateView, RedirectView
 from django.core.paginator import Paginator
 from django.contrib.auth.models import User as DjangoUser
 
+from mysite import settings
 from .forms import TaskForm, TaskModelForm, UserForm
 from .models import Task, Profile
 from django.db.models import Count
+from django.contrib import messages
+import logging
+
+logger = logging.getLogger("django")
 
 
 def tasks_view(request, num):
@@ -51,24 +57,24 @@ class TaskList(LoginRequiredMixin, ListView):
 
     def get(self, request):
         last_login = request.COOKIES.get("last_login")
-        user = Profile.objects.get(django_user=request.user)
+        user = Profile.objects.get(username=request.user)
         tasks = Task.objects.filter(user=user)
         paginator = Paginator(tasks, 10)
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
-        response = render(request, 'reminder/tasks.html', {'page_obj': page_obj, 'tasks': tasks, 'last_login':last_login})
+        response = render(request, 'reminder/tasks.html',
+                          {'page_obj': page_obj, 'tasks': tasks, 'last_login': last_login})
         response.set_cookie("last_login", datetime.datetime.now())
         return response
 
     def post(self, request):
-        if request.POST.get("color", ""):
-            request.session['color'] = request.POST["color"]
-            return redirect("tasks")
-        else:
+        request.session['color'] = request.POST["color"]
+        if request.POST.get("delete", ""):
             for task in Task.objects.all():
                 if str(task.pk) in request.POST.keys():
                     Task.objects.get(pk=task.pk).delete()
-            return HttpResponse("Success! Deleted tasks.")
+                    messages.success(request, "Task %s deleted successfully" % task.slug, extra_tags="delete")
+            return HttpResponseRedirect("/reminder/success/")
 
 
 @login_required(login_url='/reminder/login/')
@@ -79,6 +85,13 @@ def task_detail(request, id):
 
 class TaskDetail(DetailView):
     model = Task
+
+    def get_object(self, queryset=None):
+        try:
+            return super().get_object(queryset)
+        except:
+            logger.error("task not found")
+            raise Http404("task not found")
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -103,7 +116,7 @@ def one_user_tasks(request, slug):
 def users_view(request):
     users = Profile.objects.all()
     last_login = request.COOKIES.get("last_login")
-    return render(request, 'reminder/users.html', {'users': users, 'last_login':last_login})
+    return render(request, 'reminder/users.html', {'users': users, 'last_login': last_login})
 
 
 class UserList(ListView):
@@ -184,23 +197,23 @@ class NewTask(PermissionRequiredMixin, View):
 
     def post(self, request, *args, **kwargs):
         # if request.user.has_perm('reminder.add_task'):
-            user = Profile.objects.get(name=request.POST["user"])
-            done = True if "done" in request.POST.keys() else False
-            if request.GET["id"]:
-                task = Task.objects.get(pk=request.GET["id"])
-                task.title = request.POST["title"]
-                task.due_date = request.POST["due_date"]
-                task.category = request.POST["category"]
-                task.done = done
-                task.hour = request.POST["hour"]
-                task.user = user
-            else:
-                task = Task(title=request.POST["title"], due_date=request.POST["due_date"]
-                            , category=request.POST["category"], done=done, hour=request.POST["hour"], user=user)
-            task.save()
-            return HttpResponse("Saved!")
-        # else:
-        #     return HttpResponse("You dont have permission to do that!")
+        user = Profile.objects.get(name=request.POST["user"])
+        done = True if "done" in request.POST.keys() else False
+        if request.GET["id"]:
+            task = Task.objects.get(pk=request.GET["id"])
+            task.title = request.POST["title"]
+            task.due_date = request.POST["due_date"]
+            task.category = request.POST["category"]
+            task.done = done
+            task.hour = request.POST["hour"]
+            task.user = user
+        else:
+            task = Task(title=request.POST["title"], due_date=request.POST["due_date"]
+                        , category=request.POST["category"], done=done, hour=request.POST["hour"], user=user)
+        task.save()
+        return HttpResponse("Saved!")
+    # else:
+    #     return HttpResponse("You dont have permission to do that!")
 
 
 class UsersNoTask(View):
@@ -268,9 +281,9 @@ class Register(View):
                                                  request.POST["email"],
                                                  request.POST["password"],
                                                  first_name=request.POST["name"],
-                                                 last_name=request.POST["lname"],)
+                                                 last_name=request.POST["lname"], )
         dj_user.save()
-        user = Profile(name=request.POST["name"], website=request.POST["website"], django_user=dj_user)
+        user = Profile(username=request.POST["name"], website=request.POST["website"])
         user.save()
         return HttpResponse("Success!")
 
@@ -316,6 +329,16 @@ class TaskFormView(FormView):
             task = Task(title=form.cleaned_data.get("title"), due_date=form.cleaned_data.get("due_date"),
                         hour=form.cleaned_data.get("time"))
             task.save()
+
+            try:
+                send_mail(subject="Task created",
+                          message="a task is created with id %d" % task.id,
+                          from_email=settings.EMAIL_HOST_USER,
+                          recipient_list=[settings.RECIPIENT_ADDRESS])
+            except:
+                pass
+
+            messages.success(request, "Task created successfully")
             return HttpResponseRedirect("/reminder/success/")
         else:
             return render(request, "reminder/new_task_2.html", {'form': form})
@@ -329,11 +352,19 @@ class UserRegisterView(FormView):
     form_class = UserForm
     template_name = "reminder/signup.html"
     success_url = "/reminder/success/"
+    console_logger = logging.getLogger("console_logger")
 
     def post(self, request, *args, **kwargs):
+        # messages.set_level(request, messages.WARNING)
         form = UserForm(request.POST)
         if form.is_valid():
             form.save()
+            messages.success(request, "User created successfully", extra_tags="add")
+            # m = messages.get_messages(request)
+            # for message in m:
+            #     print(message)
+            # m.used = False
             return HttpResponseRedirect("/reminder/success/")
         else:
+            self.console_logger.warning("some errors in form")
             return render(request, "reminder/signup.html", {'form': form})
